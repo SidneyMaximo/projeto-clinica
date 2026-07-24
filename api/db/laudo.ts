@@ -1,4 +1,4 @@
-import { AtendimentoService } from '../../src/services/dbDiagnosticos/atendimentoService.ts';
+import { AtendimentoService } from '../../src/services/dbDiagnosticos/atendimentoService.js';
 
 export default async function handler(req: any, res: any) {
   // CORS
