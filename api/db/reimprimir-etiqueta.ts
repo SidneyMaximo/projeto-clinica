@@ -1,4 +1,4 @@
-import { AtendimentoService } from '../../src/services/dbDiagnosticos/atendimentoService';
+import { AtendimentoService } from '../../src/services/dbDiagnosticos/atendimentoService.ts';
 
 export default async function handler(req: any, res: any) {
   res.setHeader('Access-Control-Allow-Credentials', true);

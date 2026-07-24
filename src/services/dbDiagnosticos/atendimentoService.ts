@@ -1,4 +1,4 @@
-import { getSoapClient, getCredenciais } from './soapClient';
+import { getSoapClient, getCredenciais } from './soapClient.ts';
 import { 
   CtPedidoV2,
   ConsultaStatusAtendimentoRequest,
@@ -8,7 +8,7 @@ import {
   EnviaAmostrasProcedimentosPendentesRequest,
   RelatorioRequisicoesEnviadasRequest,
   CtPedidoMPPV2
-} from './types';
+} from './types.ts';
 
 export class AtendimentoService {
   

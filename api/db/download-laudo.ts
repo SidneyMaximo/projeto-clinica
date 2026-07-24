@@ -1,4 +1,4 @@
-import { AtendimentoService } from '../../src/services/dbDiagnosticos/atendimentoService';
+import { AtendimentoService } from '../../src/services/dbDiagnosticos/atendimentoService.ts';
 
 /**
  * Rota: GET /api/db/download-laudo
