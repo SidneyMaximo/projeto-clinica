@@ -89,7 +89,7 @@ export default function Layout({
           <img
             src={logo}
             alt="Centro Médico Dr. Diogo Gonzaga"
-            className="h-9 w-9 sm:h-11 sm:w-11 rounded-xl object-cover shadow-sm border border-slate-100 shrink-0"
+            className="h-10 sm:h-14 w-auto object-contain shrink-0"
           />
           <div className="min-w-0">
             <h1 className="text-sm sm:text-base font-black tracking-tight text-slate-900 truncate leading-tight">

@@ -65,7 +65,7 @@ export default function LoginScreen({ doctors, employees, onLogin }: LoginScreen
               <img
                 src={logo}
                 alt="Centro Médico Dr. Diogo Gonzaga"
-                className="h-20 w-20 rounded-2xl object-cover shadow-2xl border-2 border-white/20"
+                className="h-20 sm:h-24 w-auto max-w-full object-contain rounded-xl bg-white p-1"
               />
               <div className="absolute -bottom-1 -right-1 bg-emerald-500 rounded-full p-1 shadow-lg">
                 <ShieldCheck className="h-4 w-4 text-white" />
