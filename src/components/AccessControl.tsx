@@ -294,6 +294,7 @@ export default function AccessControl({
     { key: 'createClinicalDocs', label: 'Documentos e Receitas', desc: 'Permite assinar e emitir atestados/receitas.' },
     { key: 'viewCashRegister', label: 'Controle de Caixa', desc: 'Permite visualizar dados financeiros da clínica.' },
     { key: 'viewLGPD', label: 'Logs e Painel LGPD', desc: 'Permite ver os registros e realizar anonimização.' },
+    { key: 'viewLabIntegration', label: 'DB Diagnósticos (Lab)', desc: 'Permite acessar a integração com o laboratório DB Diagnósticos.' },
     { key: 'manageUsers', label: 'Gerenciar Acessos', desc: 'Permite alterar permissões e cadastrar novos usuários.' }
   ];
 
