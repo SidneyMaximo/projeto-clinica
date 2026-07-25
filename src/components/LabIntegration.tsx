@@ -141,13 +141,48 @@ export default function LabIntegration() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
       });
-      const data = await response.json();
-      
-      if (!response.ok) throw new Error(data.error || 'Falha ao enviar pedido');
 
-      // Extrai dados do retorno do DB Diagnósticos (RecebeAtendimentoResult)
-      const resultado = data?.RecebeAtendimentoResult ?? data ?? {};
-      const etiquetasRaw = resultado?.Etiquetas?.ct_Etiqueta_v2;
+      // Lê o corpo apenas UMA vez como texto para evitar "Unexpected end of JSON input"
+      // quando a resposta vier vazia ou o stream for consumido duas vezes.
+      const rawText = await response.text();
+      let data: any = {};
+      try {
+        data = rawText ? JSON.parse(rawText) : {};
+      } catch {
+        // Se o JSON vier malformado, mantém data como objeto vazio e deixa o erro ser tratado abaixo
+        console.warn('Resposta não é JSON válido:', rawText);
+      }
+
+      if (!response.ok) throw new Error(data?.error || `Erro ${response.status}: Falha ao enviar pedido`);
+
+      // LOG DIAGNÓSTICO — abra o Console do DevTools (F12) para inspecionar a estrutura real da resposta
+      console.log('RESPOSTA API (data completo):', JSON.stringify(data, null, 2));
+
+      // Extraindo o Protocolo DB navegando pelas camadas reais da API (confirmado via console.log)
+      const protocoloLimpo =
+        data?.RecebeAtendimentoResult?.StatusLote?.ct_StatusLote_v2?.[0]?.Pedidos?.ct_StatusLotePedido_v2?.[0]?.NumeroAtendimentoDB ||
+        data?.RecebeAtendimentoResult?.Confirmacao?.ConfirmacaoPedidov2?.ct_ConfirmacaoPedidoEtiqueta_v2?.[0]?.NumeroAtendimentoDB ||
+        data?.ct_StatusLotePedido_v2?.[0]?.NumeroAtendimentoDB ||
+        data?.ConfirmacaoPedidoEtiqueta_v2?.[0]?.NumeroAtendimentoDB ||
+        'N/A';
+
+      // Extraindo o Código de Barras (Número da Amostra)
+      const codigoBarras =
+        data?.RecebeAtendimentoResult?.Confirmacao?.ConfirmacaoPedidov2?.ct_ConfirmacaoPedidoEtiqueta_v2?.[0]?.Amostras?.ct_AmostraEtiqueta_v2?.[0]?.NumeroAmostra ||
+        data?.ConfirmacaoPedidoEtiqueta_v2?.[0]?.Amostras?.ct_AmostraEtiqueta_v2?.[0]?.NumeroAmostra ||
+        'N/A';
+
+      console.log('protocoloLimpo:', protocoloLimpo, '| codigoBarras:', codigoBarras);
+
+      const itemStatus =
+        data?.RecebeAtendimentoResult?.StatusLote?.ct_StatusLote_v2?.[0]?.Pedidos?.ct_StatusLotePedido_v2?.[0] ||
+        data?.RecebeAtendimentoResult?.Confirmacao?.ConfirmacaoPedidov2?.ct_ConfirmacaoPedidoEtiqueta_v2?.[0] ||
+        data?.ct_StatusLotePedido_v2?.[0] ||
+        data?.ConfirmacaoPedidoEtiqueta_v2?.[0] ||
+        data?.RecebeAtendimentoResult ||
+        data ||
+        {};
+      const etiquetasRaw = itemStatus?.Etiquetas?.ct_Etiqueta_v2;
 
       const novoAtendimento: AtendimentoSalvo = {
         id: Date.now().toString(),
@@ -157,21 +192,21 @@ export default function LabIntegration() {
         dataNascimento: solicitacao.dataNascimento,
         numeroAtendimentoApoiado: payload.NumeroAtendimentoApoiado,
         examesSelecionados: solicitacao.examesSelecionados,
-        numeroAtendimentoDB: resultado?.NumeroAtendimentoDB,
-        numeroPedidoDB: resultado?.NumeroPedidoDB,
-        codigoBarras: resultado?.CodigoBarras,
+        numeroAtendimentoDB: protocoloLimpo !== 'N/A' ? protocoloLimpo : itemStatus?.NumeroAtendimentoDB,
+        numeroPedidoDB: itemStatus?.NumeroPedidoDB,
+        codigoBarras: codigoBarras !== 'N/A' ? codigoBarras : itemStatus?.CodigoBarras,
         etiquetas: etiquetasRaw
           ? (Array.isArray(etiquetasRaw) ? etiquetasRaw : [etiquetasRaw])
           : undefined,
-        epl: resultado?.EPL,
-        status: resultado?.Status,
-        mensagem: resultado?.Mensagem,
+        epl: itemStatus?.EPL,
+        status: itemStatus?.Status,
+        mensagem: itemStatus?.Mensagem,
       };
 
       const salvos = salvarAtendimentoLocal(novoAtendimento);
       setAtendimentosSalvos(salvos);
 
-      setPedidoMensagem({ tipo: 'sucesso', texto: `Pedido enviado! Pedido DB: ${resultado?.NumeroPedidoDB || 'N/A'} • Cód. Barras: ${resultado?.CodigoBarras || 'N/A'}` });
+      setPedidoMensagem({ tipo: 'sucesso', texto: `Pedido enviado! Protocolo DB: ${protocoloLimpo} • Cód. Barras: ${codigoBarras}` });
       setSolicitacao({ numeroAtendimentoApoiado: '', nomePaciente: '', sexo: 'M', dataNascimento: '', examesSelecionados: [] });
     } catch (err: any) {
       setPedidoMensagem({ tipo: 'erro', texto: err.message });

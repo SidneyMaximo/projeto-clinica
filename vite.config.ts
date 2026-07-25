@@ -8,4 +8,13 @@ export default defineConfig({
   build: {
     outDir: 'docs',
   },
+  server: {
+    proxy: {
+      // Redireciona /api/* para o servidor Vercel (vercel dev roda na porta 3000)
+      '/api': {
+        target: 'http://localhost:3000',
+        changeOrigin: true,
+      },
+    },
+  },
 })
