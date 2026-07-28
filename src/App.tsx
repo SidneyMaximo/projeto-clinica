@@ -325,8 +325,8 @@ export default function App() {
                   id: e.id,
                   name: e.descricao, // mapeamento
                   description: `Código: ${e.codigo_exame_db} | Mnemônico: ${e.mnemonico}`,
-                  durationMinutes: e.prazo || 15,
-                  price: 0 // exames_db não tem preço por padrão
+                  durationMinutes: e.prazo_dias || e.prazo || 15,
+                  price: e.preco != null ? Number(e.preco) : 0
                 })));
               }
             } catch (err) {
@@ -1687,20 +1687,26 @@ export default function App() {
   };
 
   const handleAddExam = async (newExam: Omit<Exam, 'id'>) => {
-    const id = `exam_${Math.random().toString(36).substring(2, 9)}`;
-    const exam: Exam = { id, ...newExam };
+    const tempId = `exam_${Math.random().toString(36).substring(2, 9)}`;
+    const exam: Exam = { id: tempId, ...newExam };
     setExams(prev => [...prev, exam]);
 
     if (isSupabaseConfigured && supabase) {
       try {
-        await supabase.from('exames_db').insert({
-          id,
-          codigo_exame_db: `LOCAL-${id}`,
+        const codeSuffix = Math.random().toString(36).substring(2, 8).toUpperCase();
+        const { data, error } = await supabase.from('exames_db').insert({
+          codigo_exame_db: `LOCAL-${codeSuffix}`,
           mnemonico: exam.name.substring(0, 10).toUpperCase(),
           descricao: exam.name,
-          setor: 'LOCAL',
-          prazo: exam.durationMinutes
-        });
+          prazo_dias: Number(exam.durationMinutes) || 0,
+          preco: Number(exam.price) || 0
+        }).select('id').single();
+
+        if (error) {
+          console.error("Falha ao salvar exame no Supabase:", error);
+        } else if (data && data.id) {
+          setExams(prev => prev.map(e => e.id === tempId ? { ...e, id: data.id } : e));
+        }
       } catch (err) {
         console.error("Falha ao salvar exame no Supabase:", err);
       }
@@ -1720,10 +1726,15 @@ export default function App() {
 
     if (isSupabaseConfigured && supabase) {
       try {
-        await supabase.from('exames_db').update({
+        const { error } = await supabase.from('exames_db').update({
           descricao: updatedExam.name,
-          prazo: updatedExam.durationMinutes
+          prazo_dias: Number(updatedExam.durationMinutes) || 0,
+          preco: Number(updatedExam.price) || 0
         }).eq('id', id);
+
+        if (error) {
+          console.error("Falha ao atualizar exame no Supabase:", error);
+        }
       } catch (err) {
         console.error("Falha ao atualizar exame no Supabase:", err);
       }
