@@ -18,6 +18,7 @@
 | 7 | **Guia de Deploy** | [`DEPLOY.md`](DEPLOY.md) | Configuração Supabase, GitHub Pages, CI/CD |
 | 8 | **Changelog** | [`../CHANGELOG.md`](../CHANGELOG.md) | Histórico de versões do sistema |
 | 9 | **Guia de Contribuição** | [`../CONTRIBUTING.md`](../CONTRIBUTING.md) | Padrões de código, Git flow, PR guidelines |
+| 10 | **Troubleshooting** | [`TROUBLESHOOTING.md`](TROUBLESHOOTING.md) | Bugs conhecidos, causas e soluções aplicadas |
 
 ---
 
@@ -47,6 +48,9 @@
 ### Quero ver o que mudou em cada versão
 → Leia o [Changelog](../CHANGELOG.md)
 
+### Encontrei um bug ou erro inesperado
+→ Leia o [Troubleshooting](TROUBLESHOOTING.md) para ver se já foi documentado
+
 ---
 
 ## Tecnologias Principais
@@ -68,4 +72,4 @@ Apache License 2.0
 
 ---
 
-*Documentação gerada em 07/07/2026 | Desenvolvido por SidneyMaximo*
+*Documentação gerada em 07/07/2026 | Atualizada em 28/07/2026 | Desenvolvido por SidneyMaximo*

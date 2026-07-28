@@ -16,6 +16,22 @@ e este projeto segue [Versionamento Semântico](https://semver.org/lang/pt-BR/).
 
 ---
 
+## [1.0.1] — 2026-07-28
+
+### 🐛 Corrigido
+
+#### Integração DB Diagnósticos (`LabIntegration.tsx`)
+- **BUG-001:** Protocolo DB e Código de Barras exibindo `N/A` na tela após envio de pedido com sucesso
+  - Substituída extração por caminho fixo por função `buscaRecursiva()` que percorre toda a estrutura da resposta SOAP
+  - Adicionados logs de diagnóstico detalhados no Console (F12) para facilitar debugging futuro
+  - Estrutura real da resposta `RecebeAtendimentoResult` confirmada e documentada
+
+### 📚 Documentação
+- Criado `docs/TROUBLESHOOTING.md` — guia de resolução de problemas com bugs documentados, causas e soluções
+- Atualizado `docs/INDICE.md` com link para o novo Troubleshooting e seção "Encontrei um bug"
+
+---
+
 ## [1.0.0] — 2026-07-07
 
 ### ✨ Adicionado

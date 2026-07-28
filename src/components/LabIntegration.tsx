@@ -67,6 +67,7 @@ export default function LabIntegration() {
   });
   const [submittingPedido, setSubmittingPedido] = useState(false);
   const [pedidoMensagem, setPedidoMensagem] = useState<{tipo: 'sucesso' | 'erro', texto: string} | null>(null);
+  const [termoBuscaExame, setTermoBuscaExame] = useState('');
 
   // Estados para Acompanhamento/Laudo
   const [numAtendimentoBusca, setNumAtendimentoBusca] = useState('');
@@ -112,6 +113,30 @@ export default function LabIntegration() {
     }
   };
 
+  /**
+   * Busca recursiva: percorre QUALQUER estrutura de objeto/array
+   * e retorna o primeiro valor encontrado para a chave informada.
+   * Resolve o problema de a lib SOAP retornar o resultado em estrutura
+   * diferente da esperada (ex.: RecebeAtendimentoResponse vs Result).
+   */
+  const buscaRecursiva = (obj: any, chave: string): any => {
+    if (obj === null || obj === undefined) return undefined;
+    if (typeof obj !== 'object') return undefined;
+    if (Array.isArray(obj)) {
+      for (const item of obj) {
+        const found = buscaRecursiva(item, chave);
+        if (found !== undefined && found !== null && found !== '') return found;
+      }
+      return undefined;
+    }
+    for (const k of Object.keys(obj)) {
+      if (k === chave && obj[k] !== null && obj[k] !== undefined && obj[k] !== '') return obj[k];
+      const found = buscaRecursiva(obj[k], chave);
+      if (found !== undefined && found !== null && found !== '') return found;
+    }
+    return undefined;
+  };
+
   const handleEnviarPedido = async (e: React.FormEvent) => {
     e.preventDefault();
     if (solicitacao.examesSelecionados.length === 0) {
@@ -145,6 +170,11 @@ export default function LabIntegration() {
       // Lê o corpo apenas UMA vez como texto para evitar "Unexpected end of JSON input"
       // quando a resposta vier vazia ou o stream for consumido duas vezes.
       const rawText = await response.text();
+
+      // LOG DIAGNÓSTICO COMPLETO — veja a resposta bruta exata do servidor no Console (F12)
+      console.log('=== RESPOSTA BRUTA DO SERVIDOR (rawText) ===');
+      console.log(rawText);
+
       let data: any = {};
       try {
         data = rawText ? JSON.parse(rawText) : {};
@@ -153,26 +183,23 @@ export default function LabIntegration() {
         console.warn('Resposta não é JSON válido:', rawText);
       }
 
-      if (!response.ok) throw new Error(data?.error || `Erro ${response.status}: Falha ao enviar pedido`);
+      if (!response.ok) {
+        const msg = data?.details?.message || data?.error || `Erro ${response.status}: Falha ao enviar pedido`;
+        throw new Error(msg);
+      }
 
-      // LOG DIAGNÓSTICO — abra o Console do DevTools (F12) para inspecionar a estrutura real da resposta
-      console.log('RESPOSTA API (data completo):', JSON.stringify(data, null, 2));
+      // LOG DIAGNÓSTICO — estrutura completa do objeto JSON
+      console.log('=== RESPOSTA API (data completo) ===');
+      console.log(JSON.stringify(data, null, 2));
 
-      // Extraindo o Protocolo DB navegando pelas camadas reais da API (confirmado via console.log)
-      const protocoloLimpo =
-        data?.RecebeAtendimentoResult?.StatusLote?.ct_StatusLote_v2?.[0]?.Pedidos?.ct_StatusLotePedido_v2?.[0]?.NumeroAtendimentoDB ||
-        data?.RecebeAtendimentoResult?.Confirmacao?.ConfirmacaoPedidov2?.ct_ConfirmacaoPedidoEtiqueta_v2?.[0]?.NumeroAtendimentoDB ||
-        data?.ct_StatusLotePedido_v2?.[0]?.NumeroAtendimentoDB ||
-        data?.ConfirmacaoPedidoEtiqueta_v2?.[0]?.NumeroAtendimentoDB ||
-        'N/A';
+      // ─── EXTRAÇÃO ROBUSTA via busca recursiva ─────────────────────────────────
+      // A biblioteca SOAP pode retornar o dado em qualquer nível de aninhamento.
+      // buscaRecursiva() percorre TODO o objeto e retorna o primeiro valor encontrado.
+      const protocoloLimpo = buscaRecursiva(data, 'NumeroAtendimentoDB') || 'N/A';
+      const codigoBarras   = buscaRecursiva(data, 'NumeroAmostra')       || 'N/A';
 
-      // Extraindo o Código de Barras (Número da Amostra)
-      const codigoBarras =
-        data?.RecebeAtendimentoResult?.Confirmacao?.ConfirmacaoPedidov2?.ct_ConfirmacaoPedidoEtiqueta_v2?.[0]?.Amostras?.ct_AmostraEtiqueta_v2?.[0]?.NumeroAmostra ||
-        data?.ConfirmacaoPedidoEtiqueta_v2?.[0]?.Amostras?.ct_AmostraEtiqueta_v2?.[0]?.NumeroAmostra ||
-        'N/A';
-
-      console.log('protocoloLimpo:', protocoloLimpo, '| codigoBarras:', codigoBarras);
+      console.log('✅ protocoloLimpo (busca recursiva):', protocoloLimpo);
+      console.log('✅ codigoBarras   (busca recursiva):', codigoBarras);
 
       const itemStatus =
         data?.RecebeAtendimentoResult?.StatusLote?.ct_StatusLote_v2?.[0]?.Pedidos?.ct_StatusLotePedido_v2?.[0] ||
@@ -206,7 +233,17 @@ export default function LabIntegration() {
       const salvos = salvarAtendimentoLocal(novoAtendimento);
       setAtendimentosSalvos(salvos);
 
-      setPedidoMensagem({ tipo: 'sucesso', texto: `Pedido enviado! Protocolo DB: ${protocoloLimpo} • Cód. Barras: ${codigoBarras}` });
+      if (protocoloLimpo === 'N/A' && codigoBarras === 'N/A') {
+        setPedidoMensagem({
+          tipo: 'erro',
+          texto: 'A API do DB Diagnósticos retornou sem confirmação (Confirmacao: null). Verifique se as credenciais (DB_CODIGO_APOIADO e DB_SENHA_INTEGRACAO) no arquivo .env estão configuradas e válidas.'
+        });
+      } else {
+        setPedidoMensagem({
+          tipo: 'sucesso',
+          texto: `Pedido enviado com sucesso! Protocolo DB: ${protocoloLimpo} • Cód. Barras: ${codigoBarras}`
+        });
+      }
       setSolicitacao({ numeroAtendimentoApoiado: '', nomePaciente: '', sexo: 'M', dataNascimento: '', examesSelecionados: [] });
     } catch (err: any) {
       setPedidoMensagem({ tipo: 'erro', texto: err.message });
@@ -547,14 +584,32 @@ export default function LabIntegration() {
 
               <div>
                 <label className="block text-xs font-bold text-slate-600 mb-2">Selecionar Exames (DB Diagnósticos)</label>
-                <div className="border border-slate-200 rounded-xl overflow-hidden">
+                <div className="border border-slate-200 rounded-xl overflow-hidden relative">
+                  <div className="p-2 border-b border-slate-200 bg-white sticky top-0 z-10">
+                    <div className="relative">
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                      <input
+                        type="text"
+                        placeholder="Buscar por nome, código ou mnemônico..."
+                        value={termoBuscaExame}
+                        onChange={(e) => setTermoBuscaExame(e.target.value)}
+                        className="w-full pl-9 pr-3 py-2 text-sm bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-colors"
+                      />
+                    </div>
+                  </div>
                   <div className="max-h-60 overflow-y-auto bg-slate-50 p-2 space-y-1">
                     {loadingExames ? (
                       <p className="text-sm text-slate-500 p-3 text-center">Carregando exames do banco...</p>
                     ) : examesDisponiveis.length === 0 ? (
                       <p className="text-sm text-slate-500 p-3 text-center">Nenhum exame importado ainda.</p>
                     ) : (
-                      examesDisponiveis.map(exame => (
+                      examesDisponiveis
+                        .filter(exame => 
+                          (exame.descricao || '').toLowerCase().includes(termoBuscaExame.toLowerCase()) || 
+                          (exame.codigo_exame_db || '').toLowerCase().includes(termoBuscaExame.toLowerCase()) || 
+                          (exame.mnemonico || '').toLowerCase().includes(termoBuscaExame.toLowerCase())
+                        )
+                        .map(exame => (
                         <label key={exame.codigo_exame_db} className="flex items-center gap-3 p-2 rounded-lg hover:bg-white transition-colors cursor-pointer border border-transparent hover:border-slate-200">
                           <input
                             type="checkbox"
