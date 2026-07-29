@@ -26,27 +26,30 @@ export default async function handler(req: any, res: any) {
       return res.status(400).json({ error: 'Parâmetro atendimento (NumeroAtendimentoApoiado) é obrigatório' });
     }
 
-    const resultado = await AtendimentoService.consultarStatus(
+    const dados = await AtendimentoService.consultarStatus(
       String(atendimento), 
       procedimento ? String(procedimento) : undefined
     );
     
-    return res.status(200).json(resultado);
-  } catch (error: any) {
-    console.error('Erro na API de Consulta Status:', error);
+    // 4. Valide se a resposta da DB não é um erro de autenticação antes de tentar extrair os pedidos.
+    if (dados?.Fault || (typeof dados === 'string' && dados.includes('Fault'))) {
+      return res.status(401).json({ error: 'Falha de autenticação ou erro no serviço SOAP da DB' });
+    }
 
-    // Extrai o faultstring do SOAP para dar uma mensagem clara ao frontend
-    const soapFault =
-      error?.root?.Envelope?.Body?.Fault?.faultstring ||
-      error?.root?.Envelope?.Body?.Fault?.detail?.ExceptionDetail?.Message ||
-      null;
+    // 3. Utilize Optional Chaining (?.) em todas as extrações de dados
+    // Vamos garantir que se houver RecebeAtendimentoResult ou ConsultaStatusAtendimentoResult, enviamos com segurança.
+    const lote = dados?.RecebeAtendimentoResult?.StatusLote?.ct_StatusLote_v2?.[0];
+    const seguro = dados?.ConsultaStatusAtendimentoResult || dados;
+
+    return res.status(200).json(seguro);
+  } catch (error: any) {
+    // 2. Dentro do catch, adicione console.error("Erro na integração DB:", error) 
+    // e retorne algo seguro para o frontend: res.status(500).json({ error: "Falha na comunicação com o laboratório", details: error.message })
+    console.error("Erro na integração DB:", error);
 
     return res.status(500).json({
-      error: soapFault
-        ? `Erro do laboratório: ${soapFault}`
-        : 'Erro interno no servidor ao consultar Status',
-      details: error.message,
-      soapFault,
+      error: "Falha na comunicação com o laboratório",
+      details: error.message
     });
   }
 }
