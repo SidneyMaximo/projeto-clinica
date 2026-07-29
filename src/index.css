@@ -71,6 +71,12 @@ textarea {
 
 /* ─── Impressão ─── */
 @media print {
+  @page {
+    margin: 0; /* Isso força o navegador a não imprimir seus cabeçalhos e rodapés padrões */
+  }
+  body {
+    padding: 1.5cm; /* Adiciona respiro interno para o conteúdo não colar na borda do papel */
+  }
   body > *               { display: none !important; }
   .printable-medical-record { display: block !important; }
 }
