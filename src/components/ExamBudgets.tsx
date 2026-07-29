@@ -3,8 +3,9 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
+import { supabase } from '../utils/supabaseClient';
 import {
   FileText, Plus, Trash2, Printer, Search, User, CheckCircle,
   ClipboardList, Package, DollarSign, Calendar, Info, X, Check, Stethoscope
@@ -42,6 +43,42 @@ export default function ExamBudgets({
   // --- Budget history state ---
   const [viewingBudget, setViewingBudget] = useState<ExamBudget | null>(null);
   const [historySearch, setHistorySearch] = useState('');
+  const [dbBudgets, setDbBudgets] = useState<ExamBudget[]>([]);
+
+  useEffect(() => {
+    const fetchBudgets = async () => {
+      try {
+        const thirtyDaysAgo = new Date();
+        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+        const { data, error } = await supabase
+          .from('orcamentos')
+          .select('*')
+          .gte('created_at', thirtyDaysAgo.toISOString())
+          .order('created_at', { ascending: false });
+
+        if (error) throw error;
+        
+        if (data) {
+          const formatted: ExamBudget[] = data.map((d: any) => ({
+            id: d.id,
+            patientName: d.paciente,
+            items: d.itens,
+            totalAmount: d.valor_total,
+            createdAt: d.created_at,
+            status: d.status || 'pendente',
+            notes: d.notas,
+            operatorName: d.operador_nome || 'Operador',
+            operatorId: ''
+          }));
+          setDbBudgets(formatted);
+        }
+      } catch (err) {
+        console.error('Erro ao buscar orcamentos:', err);
+      }
+    };
+    fetchBudgets();
+  }, []);
 
   const printRef = useRef<HTMLDivElement>(null);
 
@@ -118,6 +155,39 @@ export default function ExamBudgets({
 
     const patientId = patientMode === 'existing' ? selectedPatientId : undefined;
 
+    const newBudgetObj = {
+      id: `orc_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`,
+      patientId,
+      patientName,
+      items: selectedItems,
+      totalAmount,
+      notes,
+      status: 'pendente' as const,
+      createdAt: new Date().toISOString(),
+      operatorId: currentSession.userId,
+      operatorName: currentSession.name
+    };
+
+    const saveToDb = async () => {
+      try {
+        const { error } = await supabase.from('orcamentos').insert({
+          id: newBudgetObj.id,
+          paciente: newBudgetObj.patientName,
+          valor_total: newBudgetObj.totalAmount,
+          itens: newBudgetObj.items,
+          created_at: newBudgetObj.createdAt,
+          status: newBudgetObj.status,
+          notas: newBudgetObj.notes,
+          operador_nome: newBudgetObj.operatorName
+        });
+        if (error) throw error;
+        setDbBudgets(prev => [newBudgetObj, ...prev]);
+      } catch (err) {
+        console.error('Erro ao salvar orçamento no banco:', err);
+      }
+    };
+    saveToDb();
+
     onAddBudget({
       patientId,
       patientName,
@@ -142,8 +212,8 @@ export default function ExamBudgets({
     setTimeout(() => window.print(), 300);
   };
 
-  // Filtered history
-  const filteredBudgets = budgets.filter(b =>
+  // Filtered history (using database budgets instead of props)
+  const filteredBudgets = dbBudgets.filter(b =>
     b.patientName.toLowerCase().includes(historySearch.toLowerCase()) ||
     b.items.some(i => i.examName.toLowerCase().includes(historySearch.toLowerCase()))
   );
