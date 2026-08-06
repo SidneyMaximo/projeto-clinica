@@ -7,7 +7,7 @@ dotenv.config({ path: path.resolve(process.cwd(), '.env') });
 
 const DB_WSDL_URL = 'https://cirhomprd.diagnosticosdobrasil.com.br/dbsync/wsrvProtocoloDBSync.dbsync.svc?singleWsdl';
 const DB_CODIGO_APOIADO = '12588';
-const DB_SENHA_INTEGRACAO = 'malore63';
+const DB_SENHA_INTEGRACAO = 'higike10';
 
 if (!DB_CODIGO_APOIADO || !DB_SENHA_INTEGRACAO) {
   console.warn('Aviso: DB_CODIGO_APOIADO ou DB_SENHA_INTEGRACAO não configurados nas variáveis de ambiente.');
