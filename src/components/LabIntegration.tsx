@@ -59,7 +59,6 @@ export default function LabIntegration() {
   const [examesDisponiveis, setExamesDisponiveis] = useState<any[]>([]);
   const [loadingExames, setLoadingExames] = useState(false);
   const [solicitacao, setSolicitacao] = useState({
-    numeroAtendimentoApoiado: '',
     nomePaciente: '',
     sexo: 'M',
     dataNascimento: '',
@@ -149,7 +148,7 @@ export default function LabIntegration() {
     
     // Monta o payload conforme types definidos no backend
     const payload = {
-      NumeroAtendimentoApoiado: solicitacao.numeroAtendimentoApoiado.trim() || ('ATEND-' + Date.now()),
+      NumeroAtendimentoApoiado: 'ATEND-' + Date.now(),
       ListaPacienteApoiado: {
         NomePaciente: solicitacao.nomePaciente,
         SexoPaciente: solicitacao.sexo,
@@ -244,7 +243,7 @@ export default function LabIntegration() {
           texto: `Pedido enviado com sucesso! Protocolo DB: ${protocoloLimpo} • Cód. Barras: ${codigoBarras}`
         });
       }
-      setSolicitacao({ numeroAtendimentoApoiado: '', nomePaciente: '', sexo: 'M', dataNascimento: '', examesSelecionados: [] });
+      setSolicitacao({ nomePaciente: '', sexo: 'M', dataNascimento: '', examesSelecionados: [] });
     } catch (err: any) {
       setPedidoMensagem({ tipo: 'erro', texto: err.message });
     } finally {
@@ -530,22 +529,6 @@ export default function LabIntegration() {
             )}
 
             <form onSubmit={handleEnviarPedido} className="space-y-6">
-
-              {/* Campo: Número do Atendimento Apoiado */}
-              <div className="bg-indigo-50 border border-indigo-200 rounded-xl p-4">
-                <label className="block text-xs font-bold text-indigo-700 mb-1">
-                  Número do Atendimento Apoiado
-                  <span className="ml-2 font-normal text-indigo-500">(deixe em branco para gerar automaticamente)</span>
-                </label>
-                <input
-                  type="text"
-                  value={solicitacao.numeroAtendimentoApoiado}
-                  onChange={e => setSolicitacao({...solicitacao, numeroAtendimentoApoiado: e.target.value})}
-                  className="w-full rounded-xl border border-indigo-200 bg-white px-3 py-2 text-sm font-mono focus:bg-white focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 transition-all outline-none placeholder:text-slate-400"
-                  placeholder={`Ex: ATEND-${Date.now()} (será gerado automaticamente se vazio)`}
-                  id="numero-atendimento-apoiado"
-                />
-              </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
